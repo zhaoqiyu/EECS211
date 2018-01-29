@@ -28,7 +28,7 @@ import java.net.SocketException;
  * <p>
  * The physical layer provides a bit stream interface to the link layer. This
  * layer is very hardware-dependent.
- * 
+ *  
  * <p>
  * The link layer uses the physical layer to provide a packet interface to the
  * network layer. The link layer generally provides unreliable delivery of
