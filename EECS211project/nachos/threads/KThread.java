@@ -282,8 +282,12 @@ public class KThread {
 	 */
 	public void join() {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
-
 		Lib.assertTrue(this != currentThread);
+		while(this.status!=statusFinished) {
+			currentThread.yield();
+		}
+		
+		
 
 	}
 
@@ -356,7 +360,6 @@ public class KThread {
 		currentThread = this;
 
 		tcb.contextSwitch();
-
 		currentThread.restoreState();
 	}
 
@@ -413,9 +416,16 @@ public class KThread {
 	public static void selfTest() {
 		Lib.debug(dbgThread, "Enter KThread.selfTest");
 
-		new KThread(new PingTest(1)).setName("forked thread").fork();
+		/*new KThread(new PingTest(1)).setName("forked thread").fork();
 		new KThread(new PingTest(2)).setName("forked thread").fork();
-		new PingTest(0).run();
+		new PingTest(0).run();*/
+		KThread t1=new KThread(new PingTest(1)).setName("forked thread");
+		t1.fork();
+		t1.join();
+		KThread t2=new KThread(new PingTest(2)).setName("forked thread");
+		t2.fork();
+		//new PingTest(0).run();
+		
 	}
 
 	private static final char dbgThread = 't';
@@ -466,4 +476,6 @@ public class KThread {
 	private static KThread toBeDestroyed = null;
 
 	private static KThread idleThread = null;
+	
+	private static Lock joinLock = new Lock();
 }
