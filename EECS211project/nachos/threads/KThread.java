@@ -424,6 +424,9 @@ public class KThread {
 		t1.join();
 		KThread t2=new KThread(new PingTest(2)).setName("forked thread");
 		t2.fork();
+		//the below code is use for testing condition 2
+		SynchList test=new SynchList();
+		test.selfTest();
 		//new PingTest(0).run();
 		
 	}

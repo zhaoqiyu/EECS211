@@ -14,7 +14,7 @@ public class SynchList {
 	public SynchList() {
 		list = new LinkedList<Object>();
 		lock = new Lock();
-		listEmpty = new Condition(lock);
+		listEmpty = new Condition2(lock);//change type from Condition to Condition2
 	}
 
 	/**
@@ -70,6 +70,7 @@ public class SynchList {
 	 * Test that this module is working.
 	 */
 	public static void selfTest() {
+		System.out.print("start SynList test\n");
 		SynchList ping = new SynchList();
 		SynchList pong = new SynchList();
 
@@ -86,5 +87,5 @@ public class SynchList {
 
 	private Lock lock;
 
-	private Condition listEmpty;
+	private Condition2 listEmpty;//change type from Condition to Condition2
 }

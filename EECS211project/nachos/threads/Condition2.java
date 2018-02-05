@@ -1,5 +1,7 @@
 package nachos.threads;
 
+import java.util.LinkedList;
+
 import nachos.machine.*;
 
 /**
@@ -21,6 +23,7 @@ public class Condition2 {
 	 */
 	public Condition2(Lock conditionLock) {
 		this.conditionLock = conditionLock;
+		Sleepinglist = new LinkedList<KThread>();
 	}
 
 	/**
@@ -29,20 +32,30 @@ public class Condition2 {
 	 * thread must hold the associated lock. The thread will automatically
 	 * reacquire the lock before <tt>sleep()</tt> returns.
 	 */
-	public void sleep() {
+	public void sleep() {//adding function for sleep
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-
+		boolean intStatus = Machine.interrupt().disable();
 		conditionLock.release();
-
+		Sleepinglist.add(KThread.currentThread());
+		KThread.currentThread().sleep();
 		conditionLock.acquire();
+		Machine.interrupt().restore(intStatus);
+		
 	}
 
 	/**
 	 * Wake up at most one thread sleeping on this condition variable. The
 	 * current thread must hold the associated lock.
 	 */
-	public void wake() {
+	public void wake() {//adding function for wake
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		if (!Sleepinglist.isEmpty()) {
+			boolean intStatus = Machine.interrupt().disable();
+			conditionLock.release();
+			Sleepinglist.removeFirst().ready();
+			conditionLock.acquire();
+			Machine.interrupt().restore(intStatus);
+		}
 	}
 
 	/**
@@ -51,7 +64,10 @@ public class Condition2 {
 	 */
 	public void wakeAll() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		while (!Sleepinglist.isEmpty())
+			wake();
 	}
 
 	private Lock conditionLock;
+	private LinkedList<KThread>Sleepinglist;
 }
