@@ -34,12 +34,12 @@ public class Condition2 {
 	 */
 	public void sleep() {//adding function for sleep
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-		conditionLock.acquire();
+		conditionLock.release();
 		boolean intStatus = Machine.interrupt().disable();
 		Sleepinglist.add(KThread.currentThread());
 		KThread.currentThread().sleep();
 		Machine.interrupt().restore(intStatus);
-		conditionLock.release();
+		conditionLock.acquire();
 		
 	}
 
@@ -50,11 +50,11 @@ public class Condition2 {
 	public void wake() {//adding function for wake
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 		if (!Sleepinglist.isEmpty()) {
-			conditionLock.acquire();
+			conditionLock.release();
 			boolean intStatus = Machine.interrupt().disable();
 			Sleepinglist.removeFirst().ready();
 			Machine.interrupt().restore(intStatus);
-			conditionLock.release();
+			conditionLock.acquire();
 		}
 	}
 
