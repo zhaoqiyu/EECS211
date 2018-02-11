@@ -58,7 +58,7 @@ public class KThread {
 			tcb = new TCB();
 		}
 		else {
-			readyQueue = ThreadedKernel.scheduler.newThreadQueue(false);
+			readyQueue = ThreadedKernel.scheduler.newThreadQueue(true);
 			readyQueue.acquire(this);
 
 			currentThread = this;
@@ -400,13 +400,20 @@ public class KThread {
 		}
 
 		public void run() {
+			
 			for (int i = 0; i < 5; i++) {
 				System.out.println("*** thread " + which + " looped " + i
 						+ " times");
-				currentThread.yield();
+				if(i==3 && which<=2) {
+					KThread t4=new KThread(new PingTest(4)).setName("forked thread");
+					ThreadedKernel.scheduler.setPriority(t4, 4);
+					t4.fork();
+				}
 			}
+				
+		
 		}
-
+		
 		private int which;
 	}
 
@@ -420,13 +427,16 @@ public class KThread {
 		new KThread(new PingTest(2)).setName("forked thread").fork();
 		new PingTest(0).run();*/
 		KThread t1=new KThread(new PingTest(1)).setName("forked thread");
+		ThreadedKernel.scheduler.setPriority(t1, 3);
 		t1.fork();
-		t1.join();
 		KThread t2=new KThread(new PingTest(2)).setName("forked thread");
+		ThreadedKernel.scheduler.setPriority(t2, 6);
 		t2.fork();
+		/*KThread t3=new KThread(new PingTest(3)).setName("forked thread");
+		ThreadedKernel.scheduler.setPriority(t3, 3);
+		t3.fork();*/
+		System.out.print("leaving selftest\n");
 		//the below code is use for testing condition 2
-		SynchList test=new SynchList();
-		test.selfTest();
 		//new PingTest(0).run();
 		
 	}
@@ -455,7 +465,7 @@ public class KThread {
 	 * ready (on the ready queue but not running), running, or blocked (not on
 	 * the ready queue and not running).
 	 */
-	private int status = statusNew;
+	public int status = statusNew;
 
 	private String name = "(unnamed thread)";
 

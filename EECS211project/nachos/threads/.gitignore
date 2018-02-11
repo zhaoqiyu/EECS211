@@ -25,3 +25,13 @@
 /SynchList.class
 /ThreadQueue.class
 /ThreadedKernel.class
+/PingTest.class
+/PriorityScheduler$DonationController.class
+/PriorityScheduler$PriorityQueue$ThreadWrapper.class
+/PriorityScheduler$ThreadState$EffectivePriorityDesc.class
+/PriorityScheduler1.class
+/PriorityScheduler1$DonationController.class
+/PriorityScheduler1$PriorityQueue$ThreadWrapper.class
+/PriorityScheduler1$PriorityQueue.class
+/PriorityScheduler1$ThreadState$EffectivePriorityDesc.class
+/PriorityScheduler1$ThreadState.class
