@@ -26,3 +26,5 @@
 /ThreadQueue.class
 /ThreadedKernel.class
 /PingTest.class
+/Communicator$Listener.class
+/Communicator$Speaker.class

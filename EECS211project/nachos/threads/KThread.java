@@ -404,7 +404,7 @@ public class KThread {
 		Lib.assertTrue(this == currentThread);
 	}
 
-	private static class PingTest implements Runnable {
+	public static class PingTest implements Runnable {
 		PingTest(int which) {
 			this.which = which;
 		}
@@ -437,10 +437,13 @@ public class KThread {
 		//the below code is use for testing condition 2
 		SynchList test=new SynchList();
 		test.selfTest();
-		//new PingTest(0).run();
-		//ThreadGrader5 condition2test=new ThreadGrader5();
+		//Communicator communicatortest=new Communicator();
+		//communicatortest.selfTest();
+		//ThreadGrader2 condition2test=new ThreadGrader2();
 		//condition2test.run();
-		schedulerselfTest();
+		//schedulerselfTest();
+		//Alarm alarmtest=new Alarm();
+		//alarmtest.alarmTest();
 		
 	}
 	public static void schedulerselfTest() {

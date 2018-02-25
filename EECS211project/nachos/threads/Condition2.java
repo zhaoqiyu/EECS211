@@ -49,13 +49,15 @@ public class Condition2 {
 	 */
 	public void wake() {//adding function for wake
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		boolean intStatus = Machine.interrupt().disable();	// Disable interrupts
 		if(!Sleepinglist.isEmpty())							// Assure that there is at least one sleeping thread
 		{
-				boolean intStatus = Machine.interrupt().disable();	// Disable interrupts
+				
 				KThread thread = (KThread) Sleepinglist.removeFirst();// Set new thread equal to the first one on the sleeping queue while removing it from the queue
 				thread.ready();								// Place that queue on the readyQueue by calling KThreads ready() method
-				Machine.interrupt().restore(intStatus);				// Restore interrupts
+				
 		}
+		Machine.interrupt().restore(intStatus);				// Restore interrupts
 		
 	}
 
