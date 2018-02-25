@@ -125,9 +125,9 @@ public class Alarm {
 
         for(int i = 0;i<5;i++){
             if(i == 2){
-                System.out.println("my thread要暂时隐退，此时时间为："+Machine.timer().getTime()+",大约1700clock ticks之后再见");
+                System.out.println("my thread leave, the time is:"+Machine.timer().getTime()+", around 1700clock ticks");
                 new Alarm().waitUntil(800);
-                System.out.println("线程1回来了，此时时间为："+Machine.timer().getTime());
+                System.out.println("Thread 1 is backed, the time is:"+Machine.timer().getTime());
             }
             System.out.println("*** my thread looped "
                        + i + " times");
