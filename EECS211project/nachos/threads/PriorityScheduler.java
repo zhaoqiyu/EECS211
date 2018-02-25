@@ -340,8 +340,7 @@ public class PriorityScheduler extends Scheduler {
 		}
 		public void update() {
 			effectivePriority = expiredEffectivePriority;
-			//getEffectivePriority();//原本这里没有等于，我感觉得加
-			effectivePriority=getEffectivePriority();//这个是我改过的
+			effectivePriority=getEffectivePriority();
 		}
 		/** The thread with which this object is associated. */
 		protected KThread thread;
