@@ -1,6 +1,7 @@
 package nachos.threads;
 
 import nachos.machine.*;
+import nachos.ag.*;
 
 /**
  * A KThread is a thread that can be used to execute Nachos kernel code. Nachos
@@ -283,9 +284,18 @@ public class KThread {
 	public void join() {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
 		Lib.assertTrue(this != currentThread);
-		while(this.status!=statusFinished) {
+		/*boolean intStatus = Machine.interrupt().disable();
+		if(this.status!=statusFinished) {
 			currentThread.yield();
 		}
+		Machine.interrupt().restore(intStatus);*/
+		boolean intStatus = Machine.interrupt().disable();
+		if (status != statusFinished) {
+			readyQueue.waitForAccess(currentThread);
+			KThread.sleep();
+		}
+
+		Machine.interrupt().restore(intStatus);
 		
 		
 
@@ -428,8 +438,71 @@ public class KThread {
 		SynchList test=new SynchList();
 		test.selfTest();
 		//new PingTest(0).run();
+		//ThreadGrader5 condition2test=new ThreadGrader5();
+		//condition2test.run();
+		schedulerselfTest();
 		
 	}
+	public static void schedulerselfTest() {
+		System.out.println("---------PriorityScheduler test---------------------");
+		PriorityScheduler s = new PriorityScheduler();
+		ThreadQueue queue = s.newThreadQueue(true);
+		ThreadQueue queue2 = s.newThreadQueue(true);
+		ThreadQueue queue3 = s.newThreadQueue(true);
+		
+		KThread thread1 = new KThread();
+		KThread thread2 = new KThread();
+		KThread thread3 = new KThread();
+		KThread thread4 = new KThread();
+		KThread thread5 = new KThread();
+		thread1.setName("thread1");
+		thread2.setName("thread2");
+		thread3.setName("thread3");
+		thread4.setName("thread4");
+		thread5.setName("thread5");
+
+		
+		boolean intStatus = Machine.interrupt().disable();
+		
+		queue3.acquire(thread1);
+		queue.acquire(thread1);
+		queue.waitForAccess(thread2);
+		queue2.acquire(thread4);
+		queue2.waitForAccess(thread1);
+		System.out.println("thread1 EP="+s.getThreadState(thread1).getEffectivePriority());
+		System.out.println("thread2 EP="+s.getThreadState(thread2).getEffectivePriority());
+		System.out.println("thread4 EP="+s.getThreadState(thread4).getEffectivePriority());
+		
+		s.getThreadState(thread2).setPriority(3);
+		
+		System.out.println("After setting thread2's EP=3:");
+		System.out.println("thread1 EP="+s.getThreadState(thread1).getEffectivePriority());
+		System.out.println("thread2 EP="+s.getThreadState(thread2).getEffectivePriority());
+		System.out.println("thread4 EP="+s.getThreadState(thread4).getEffectivePriority());
+		
+		queue.waitForAccess(thread3);
+		s.getThreadState(thread3).setPriority(5);
+		
+		System.out.println("After adding thread3 with EP=5:");
+		System.out.println("thread1 EP="+s.getThreadState(thread1).getEffectivePriority());
+		System.out.println("thread2 EP="+s.getThreadState(thread2).getEffectivePriority());
+		System.out.println("thread3 EP="+s.getThreadState(thread3).getEffectivePriority());
+		System.out.println("thread4 EP="+s.getThreadState(thread4).getEffectivePriority());
+		
+		s.getThreadState(thread3).setPriority(2);
+		
+		System.out.println("After setting thread3 EP=2:");
+		System.out.println("thread1 EP="+s.getThreadState(thread1).getEffectivePriority());
+		System.out.println("thread2 EP="+s.getThreadState(thread2).getEffectivePriority());
+		System.out.println("thread3 EP="+s.getThreadState(thread3).getEffectivePriority());
+		System.out.println("thread4 EP="+s.getThreadState(thread4).getEffectivePriority());
+		
+		System.out.println("Thread1 acquires queue and queue3");
+		
+		Machine.interrupt().restore(intStatus);
+		System.out.println("--------End PriorityScheduler test------------------");
+	}
+	
 
 	private static final char dbgThread = 't';
 
@@ -472,7 +545,7 @@ public class KThread {
 	/** Number of times the KThread constructor was called. */
 	private static int numCreated = 0;
 
-	private static ThreadQueue readyQueue = null;
+	static ThreadQueue readyQueue = null;
 
 	private static KThread currentThread = null;
 

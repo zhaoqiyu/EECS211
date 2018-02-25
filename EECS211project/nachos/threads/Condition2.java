@@ -34,12 +34,12 @@ public class Condition2 {
 	 */
 	public void sleep() {//adding function for sleep
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-		conditionLock.release();
-		boolean intStatus = Machine.interrupt().disable();
-		Sleepinglist.add(KThread.currentThread());
-		KThread.currentThread().sleep();
-		Machine.interrupt().restore(intStatus);
-		conditionLock.acquire();
+		boolean intStatus = Machine.interrupt().disable();		// Disable interrupts
+		Sleepinglist.add(KThread.currentThread());		// Add the current thread to the sleeping queue
+		conditionLock.release();						// Release the lock
+		KThread.currentThread().sleep();				// Put the currentThread to sleep using KThread's built in sleep method
+		conditionLock.acquire();						// Reacquire the lock
+		Machine.interrupt().restore(intStatus);			// Restore previous interrupts
 		
 	}
 
@@ -49,13 +49,14 @@ public class Condition2 {
 	 */
 	public void wake() {//adding function for wake
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-		if (!Sleepinglist.isEmpty()) {
-			conditionLock.release();
-			boolean intStatus = Machine.interrupt().disable();
-			Sleepinglist.removeFirst().ready();
-			Machine.interrupt().restore(intStatus);
-			conditionLock.acquire();
+		if(!Sleepinglist.isEmpty())							// Assure that there is at least one sleeping thread
+		{
+				boolean intStatus = Machine.interrupt().disable();	// Disable interrupts
+				KThread thread = (KThread) Sleepinglist.removeFirst();// Set new thread equal to the first one on the sleeping queue while removing it from the queue
+				thread.ready();								// Place that queue on the readyQueue by calling KThreads ready() method
+				Machine.interrupt().restore(intStatus);				// Restore interrupts
 		}
+		
 	}
 
 	/**
