@@ -439,7 +439,7 @@ public class KThread {
 		test.selfTest();
 		//Communicator communicatortest=new Communicator();
 		//communicatortest.selfTest();
-		//ThreadGrader5 condition2test=new ThreadGrader5();
+		//ThreadGrader2 condition2test=new ThreadGrader2();
 		//condition2test.run();
 		//schedulerselfTest();
 		//Alarm alarmtest=new Alarm();
