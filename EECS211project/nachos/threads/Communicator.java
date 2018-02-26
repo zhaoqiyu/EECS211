@@ -21,6 +21,7 @@ public class Communicator {
 	private Condition2 listenerCond;
 	private int listenerCount;
 	private int speakerCount;
+	private Condition2 listenerSpeakerHandShake;
 
 	public Communicator() {
 		this.listenerCount = 0;
@@ -29,6 +30,7 @@ public class Communicator {
 		this.isBufferEmpty = true;
 		this.speakerCond = new Condition2(this.lock);
 		this.listenerCond = new Condition2(this.lock);
+		this.listenerSpeakerHandShake = new Condition2(lock);
 	}
 
 	/**
@@ -44,19 +46,20 @@ public class Communicator {
 	public void speak(int word) {
 		//acq lock
 		lock.acquire();
-		speakerCount++;
 		// while no available listener or word is ready(but listener hasn't fetched it)
-		while (!isBufferEmpty || listenerCount == 0) {
+		while (!isBufferEmpty) {
 		    speakerCond.sleep();
 		}
 		// System.out.print("Speaker waken up \n");
+		// set flag that word is ready
+		this.isBufferEmpty = false;
 		// speaker says a word
 		this.msg = word;
-		// set flag that word is ready
-		isBufferEmpty = false;
-		// wake up all listeners
-		listenerCond.wakeAll();
-		speakerCount--;
+		
+		// wake up listeners
+		listenerCond.wake();
+		//put into sleep unitl listener wake it and they leave together
+		listenerSpeakerHandShake.sleep();
 		lock.release();
 	}
 
@@ -70,17 +73,16 @@ public class Communicator {
 		// listener acquires the lock
 		lock.acquire();
 		// increase the number of listener by one
-		listenerCount++;
 		while(isBufferEmpty) {
-		    speakerCond.wakeAll();
 		    listenerCond.sleep();
 		}
 		// listener receives the word
 		int rtv = this.msg;
 		// reset flag that word is invalid
 		isBufferEmpty = true;
-		// decrease listener number
-		listenerCount--;
+		speakerCond.wake();
+		listenerSpeakerHandShake.wake();
+		
 		lock.release();
 		return rtv;
 	}
@@ -371,5 +373,4 @@ public class Communicator {
 	    System.out.print("Leave Communicator.selfTest\n");
 
 	}
-
 }

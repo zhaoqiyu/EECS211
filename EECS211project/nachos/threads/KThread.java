@@ -290,7 +290,7 @@ public class KThread {
 		}
 		Machine.interrupt().restore(intStatus);*/
 		boolean intStatus = Machine.interrupt().disable();
-		if(status != statusFinished) {
+		while(status != statusFinished) {
 			readyQueue.waitForAccess(currentThread);
 			KThread.sleep();
 		}
@@ -444,6 +444,8 @@ public class KThread {
 		//schedulerselfTest();
 		//Alarm alarmtest=new Alarm();
 		//alarmtest.alarmTest();
+		//CommunicatorTest comtest=new CommunicatorTest();
+		//comtest.runTest();
 		
 	}
 	public static void schedulerselfTest() {
