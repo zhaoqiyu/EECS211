@@ -5,6 +5,8 @@ import nachos.threads.*;
 import nachos.userprog.*;
 
 import java.io.EOFException;
+import java.util.HashSet;
+import java.util.Hashtable;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -27,6 +29,10 @@ public class UserProcess {
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+		//new code below
+		descriptorManager = new DescriptorManager();
+		descriptorManager.add(0, UserKernel.console.openForReading());
+		descriptorManager.add(1, UserKernel.console.openForWriting());
 	}
 
 	/**
@@ -331,7 +337,118 @@ public class UserProcess {
 		processor.writeRegister(Processor.regA0, argc);
 		processor.writeRegister(Processor.regA1, argv);
 	}
+	private int handleCreate(int name) {
+		String fileName = readVirtualMemoryString(name, maxFileNameLength);
 
+		if (fileName == null) {
+			Lib.debug(dbgProcess, "Invalid file name pointer");
+			return -1;
+		}
+
+		if (deleted.contains(fileName)) {
+			Lib.debug(dbgProcess, "File is being deleted");
+			return -1;
+		}
+
+		OpenFile file = UserKernel.fileSystem.open(fileName, true);
+
+		if (file == null) {
+			Lib.debug(dbgProcess, "Create file failed");
+			return -1;
+		}
+
+		return descriptorManager.add(file);
+	}
+	private int handleOpen(int name) {
+		String fileName = readVirtualMemoryString(name, maxFileNameLength);
+
+		if (fileName == null) {
+			Lib.debug(dbgProcess, "Invalid file name pointer");
+			return -1;
+		}
+
+		OpenFile file = UserKernel.fileSystem.open(fileName, false);
+
+		if (file == null) {
+			Lib.debug(dbgProcess, "Invalid file name");
+			return -1;
+		}
+
+		if (deleted.contains(fileName)) {
+			Lib.debug(dbgProcess, "File is being deleted");
+			return -1;
+		}
+
+		return descriptorManager.add(file);
+	}
+	protected int handleRead(int fileDescriptor, int buffer, int count) {
+		OpenFile file = descriptorManager.get(fileDescriptor);
+
+		if (file == null) {
+			Lib.debug(dbgProcess, "Invalid file descriptor");
+			return -1;
+		}
+
+		if (!(buffer >= 0 && count >= 0)) {
+			Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+			return -1;
+		}
+
+		byte buf[] = new byte[count];
+
+		int length = file.read(buf, 0, count);
+
+		if (length == -1) {
+			Lib.debug(dbgProcess, "Fail to read from file");
+			return -1;
+		}
+
+		length = writeVirtualMemory(buffer, buf, 0, length);
+
+		return length;
+	}
+	protected int handleWrite(int fileDescriptor, int buffer, int count) {
+		OpenFile file = descriptorManager.get(fileDescriptor);
+
+		if (file == null) {
+			Lib.debug(dbgProcess, "Invalid file descriptor");
+			return -1;
+		}
+
+		if (!(buffer >= 0 && count >= 0)) {
+			Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+			return -1;
+		}
+
+		byte buf[] = new byte[count];
+
+		int length = readVirtualMemory(buffer, buf, 0, count);
+
+		length = file.write(buf, 0, length);
+
+		return length;
+	}
+	protected int handleClose(int fileDescriptor) {
+		return descriptorManager.close(fileDescriptor);
+	}
+	protected int handleUnlink(int name) {
+		String fileName = readVirtualMemoryString(name, maxFileNameLength);
+
+		if (fileName == null) {
+			Lib.debug(dbgProcess, "Invalid file name pointer");
+			return -1;
+		}
+
+		if (files.containsKey(fileName)) {
+			deleted.add(fileName);
+		}
+		else {
+			if (!UserKernel.fileSystem.remove(fileName))
+				return -1;
+		}
+
+		return 0;
+	}
 	/**
 	 * Handle the halt() system call.
 	 */
@@ -413,10 +530,24 @@ public class UserProcess {
 		switch (syscall) {
 		case syscallHalt:
 			return handleHalt();
+		case syscallCreate:
+			return handleCreate(a0);
+		case syscallOpen:
+			return handleOpen(a0);
+		case syscallRead:
+			return handleRead(a0, a1, a2);
+		case syscallWrite:
+			return handleWrite(a0, a1, a2);
+		case syscallClose:
+			return handleClose(a0);
+		case syscallUnlink:
+			return handleUnlink(a0);
 
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
+			System.out.print("Unknown syscall " + syscall+"\n");
 			Lib.assertNotReached("Unknown system call!");
+			
 		}
 		return 0;
 	}
@@ -448,7 +579,72 @@ public class UserProcess {
 			Lib.assertNotReached("Unexpected exception");
 		}
 	}
+	public class DescriptorManager {
+		public OpenFile descriptor[] = new OpenFile[maxFileDescriptorNum];
 
+		public int add(int index, OpenFile file) {
+			if (index < 0 || index >= maxFileDescriptorNum)
+				return -1;
+
+			if (descriptor[index] == null) {
+				descriptor[index] = file;
+				if (files.get(file.getName()) != null) {
+					files.put(file.getName(), files.get(file.getName()) + 1);
+				}
+				else {
+					files.put(file.getName(), 1);
+				}
+				return index;
+			}
+
+			return -1;
+		}
+
+		public int add(OpenFile file) {
+			for (int i = 0; i < maxFileDescriptorNum; i++)
+				if (descriptor[i] == null)
+					return add(i, file);
+
+			return -1;
+		}
+
+		public int close(int fileDescriptor) {
+			if (descriptor[fileDescriptor] == null) {
+				Lib.debug(dbgProcess, "file descriptor " + fileDescriptor
+						+ " doesn't exist");
+				return -1;
+			}
+
+			OpenFile file = descriptor[fileDescriptor];
+			descriptor[fileDescriptor] = null;
+			file.close();
+
+			String fileName = file.getName();
+
+			if (files.get(fileName) > 1)
+				files.put(fileName, files.get(fileName) - 1);
+			else {
+				files.remove(fileName);
+				if (deleted.contains(fileName)) {
+					deleted.remove(fileName);
+					UserKernel.fileSystem.remove(fileName);
+				}
+			}
+
+			return 0;
+		}
+
+		public OpenFile get(int fileDescriptor) {
+			if (fileDescriptor < 0 || fileDescriptor >= maxFileDescriptorNum)
+				return null;
+			return descriptor[fileDescriptor];
+		}
+	}
+	protected DescriptorManager descriptorManager;
+	protected static final int maxFileDescriptorNum = 16;
+	protected static Hashtable<String, Integer> files = new Hashtable<String, Integer>();
+	protected static HashSet<String> deleted = new HashSet<String>();
+	protected static final int maxFileNameLength = 256;
 	/** The program being run by this process. */
 	protected Coff coff;
 
