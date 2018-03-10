@@ -31,9 +31,9 @@ public class UserProcess {
 		for (int i = 0; i < numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
 		//new code below
-		descriptorManager = new DescriptorManager();
-		descriptorManager.add(0, UserKernel.console.openForReading());
-		descriptorManager.add(1, UserKernel.console.openForWriting());
+		descriptor = new Descriptor();
+		descriptor.add(0, UserKernel.console.openForReading());
+		descriptor.add(1, UserKernel.console.openForWriting());
 	}
 
 	/**
@@ -393,112 +393,120 @@ public class UserProcess {
 		processor.writeRegister(Processor.regA1, argv);
 	}
 	private int handleCreate(int name) {
-		String fileName = readVirtualMemoryString(name, maxFileNameLength);
+		String filename = readVirtualMemoryString(name, maxFileNameLength);
 
-		if (fileName == null) {
-			Lib.debug(dbgProcess, "Invalid file name pointer");
+		if (filename == null) {
+			System.out.print("Invalid file name");
 			return -1;
 		}
 
-		if (deleted.contains(fileName)) {
-			Lib.debug(dbgProcess, "File is being deleted");
+		if (deleted.contains(filename)) {
+			System.out.print("File is being deleted");
 			return -1;
 		}
 
-		OpenFile file = UserKernel.fileSystem.open(fileName, true);
+		OpenFile file = UserKernel.fileSystem.open(filename, true);
 
 		if (file == null) {
-			Lib.debug(dbgProcess, "Create file failed");
+			System.out.print("Cannot create file");
 			return -1;
 		}
 
-		return descriptorManager.add(file);
+		return descriptor.add(file);
 	}
 	private int handleOpen(int name) {
-		String fileName = readVirtualMemoryString(name, maxFileNameLength);
+		String filename = readVirtualMemoryString(name, maxFileNameLength);
 
-		if (fileName == null) {
-			Lib.debug(dbgProcess, "Invalid file name pointer");
+		if (filename == null) {
+			System.out.print("Invalid file name");
+			return -1;
+		}
+		if (deleted.contains(filename)) {
+			System.out.print("File is being deleted");
 			return -1;
 		}
 
-		OpenFile file = UserKernel.fileSystem.open(fileName, false);
+		OpenFile file = UserKernel.fileSystem.open(filename, false);
 
 		if (file == null) {
-			Lib.debug(dbgProcess, "Invalid file name");
+			System.out.print("Cannot create file");
 			return -1;
 		}
 
-		if (deleted.contains(fileName)) {
-			Lib.debug(dbgProcess, "File is being deleted");
-			return -1;
-		}
-
-		return descriptorManager.add(file);
+		
+		return descriptor.add(file);
 	}
 	protected int handleRead(int fileDescriptor, int buffer, int count) {
-		OpenFile file = descriptorManager.get(fileDescriptor);
+		OpenFile file = descriptor.get(fileDescriptor);
 
 		if (file == null) {
-			Lib.debug(dbgProcess, "Invalid file descriptor");
+			System.out.print("Invalid file name");
 			return -1;
 		}
 
-		if (!(buffer >= 0 && count >= 0)) {
-			Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+		if (buffer < 0 || count < 0) {
+			System.out.print("buffer and count should greater than 0");
 			return -1;
 		}
 
-		byte buf[] = new byte[count];
+		byte table[] = new byte[count];
 
-		int length = file.read(buf, 0, count);
+		int length = file.read(table, 0, count);
 
 		if (length == -1) {
-			Lib.debug(dbgProcess, "Fail to read from file");
+			System.out.print("Fail to read from file");
 			return -1;
 		}
 
-		length = writeVirtualMemory(buffer, buf, 0, length);
+		length = writeVirtualMemory(buffer, table, 0, length);
 
 		return length;
 	}
 	protected int handleWrite(int fileDescriptor, int buffer, int count) {
-		OpenFile file = descriptorManager.get(fileDescriptor);
+		OpenFile file = descriptor.get(fileDescriptor);
 
 		if (file == null) {
-			Lib.debug(dbgProcess, "Invalid file descriptor");
+			System.out.print("Invalid file");
 			return -1;
 		}
 
-		if (!(buffer >= 0 && count >= 0)) {
-			Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+		if (buffer < 0 || count < 0) {
+			System.out.print("buffer and count should greater than 0");
 			return -1;
 		}
 
-		byte buf[] = new byte[count];
+		byte table[] = new byte[count];
 
-		int length = readVirtualMemory(buffer, buf, 0, count);
+		int length = readVirtualMemory(buffer, table, 0, count);
 
-		length = file.write(buf, 0, length);
+		length = file.write(table, 0, length);
 
 		return length;
 	}
 	protected int handleClose(int fileDescriptor) {
-		return descriptorManager.close(fileDescriptor);
+		try {
+			return descriptor.close(fileDescriptor);
+		}
+		catch(Exception e)
+		{
+			System.out.print("There is a error when closing file "+e.toString() );
+			return -1;
+		}
+		
 	}
 	protected int handleUnlink(int name) {
-		String fileName = readVirtualMemoryString(name, maxFileNameLength);
+		String filename = readVirtualMemoryString(name, maxFileNameLength);
 
-		if (fileName == null) {
-			Lib.debug(dbgProcess, "Invalid file name pointer");
+		if (filename == null) {
+			System.out.print("Invalid file name ");
 			return -1;
 		}
 
-		if (files.containsKey(fileName)) {
-			deleted.add(fileName);
+		if (files.containsKey(filename)) {
+			deleted.add(filename);
 		}
 		else {
-			if (!UserKernel.fileSystem.remove(fileName))
+			if (!UserKernel.fileSystem.remove(filename))
 				return -1;
 		}
 
@@ -634,7 +642,7 @@ public class UserProcess {
 			Lib.assertNotReached("Unexpected exception");
 		}
 	}
-	public class DescriptorManager {
+	public class Descriptor {
 		public OpenFile descriptor[] = new OpenFile[maxFileDescriptorNum];
 
 		public int add(int index, OpenFile file) {
@@ -695,7 +703,7 @@ public class UserProcess {
 			return descriptor[fileDescriptor];
 		}
 	}
-	protected DescriptorManager descriptorManager;
+	protected Descriptor descriptor;
 	protected static final int maxFileDescriptorNum = 16;
 	protected static Hashtable<String, Integer> files = new Hashtable<String, Integer>();
 	protected static HashSet<String> deleted = new HashSet<String>();
