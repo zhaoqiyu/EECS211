@@ -4,6 +4,8 @@ import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 
+import java.util.LinkedList;
+
 /**
  * A kernel that can support multiple user processes.
  */
@@ -21,6 +23,11 @@ public class UserKernel extends ThreadedKernel {
 	 */
 	public void initialize(String[] args) {
 		super.initialize(args);
+		//Task 2 $ get the number of total available physical mem pages, store in the linked list
+		int numPhysPages = Machine.processor().getNumPhysPages();
+		for (int i = 0; i < numPhysPages; i++) {
+			freePages.add(i); //$ i as page id
+		}
 
 		console = new SynchConsole(Machine.console());
 
@@ -108,9 +115,35 @@ public class UserKernel extends ThreadedKernel {
 		super.terminate();
 	}
 
+	/**
+	 * Retrieve a free page into page linked list.
+	 */
+	public static int getFreePage() {  //Task 2
+		int pageNumber = -1;
+		Machine.interrupt().disable();
+		if (!freePages.isEmpty())
+			pageNumber = freePages.removeFirst();
+		Machine.interrupt().enable();
+		return pageNumber;
+	}
+
+	/**
+	 * Add a free page into page linked list.
+	 */
+	public static void addFreePage(int pageNumber) {       //Task 2
+		Lib.assertTrue(pageNumber >= 0
+				&& pageNumber < Machine.processor().getNumPhysPages());
+		Machine.interrupt().disable();
+		freePages.add(pageNumber);
+		Machine.interrupt().enable();
+	}
 	/** Globally accessible reference to the synchronized console. */
 	public static SynchConsole console;
 
 	// dummy variables to make javac smarter
 	private static Coff dummy1 = null;
+
+	// container for free memory table
+	private static LinkedList<Integer> freePages = new LinkedList<>();
+
 }
