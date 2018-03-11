@@ -144,6 +144,6 @@ public class UserKernel extends ThreadedKernel {
 	private static Coff dummy1 = null;
 
 	// container for free memory table
-	private static LinkedList<Integer> freePages = new LinkedList<>();
+	private static LinkedList<Integer> freePages = new LinkedList<Integer>();
 
 }

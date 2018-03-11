@@ -5,8 +5,10 @@ import nachos.threads.*;
 import nachos.userprog.*;
 
 import java.io.EOFException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -34,6 +36,13 @@ public class UserProcess {
 		descriptor = new Descriptor();
 		descriptor.add(0, UserKernel.console.openForReading());
 		descriptor.add(1, UserKernel.console.openForWriting());
+		
+		if(numOfProcess == 0) {
+			pid = ROOT;
+		}else {
+			pid = ROOT + numOfProcess;
+		}
+		numOfProcess++;
 	}
 
 	/**
@@ -512,6 +521,118 @@ public class UserProcess {
 
 		return 0;
 	}
+	
+	//task3
+	private int handleExec(int file, int argc, int argv){
+	      if(file<0 || argc<0 || argv<0){
+	              return -1;
+	      }
+	      
+	      String fileName= readVirtualMemoryString(file, maxArgLength);
+
+	      if(fileName==null){
+	    	  		System.out.print("Invalid file name ");
+	    	  		return -1;
+	      }
+
+	      String args[]= new String[argc];
+	      int byteReceived,argAddress;
+	      byte temp[] = new byte[4];
+	      
+	      for(int i = 0; i < argc; i++){
+	              byteReceived = readVirtualMemory(argv + i*4, temp);
+	              if(byteReceived !=4){
+	                      return -1;
+	              }
+
+	              argAddress = Lib.bytesToInt(temp, 0);
+	              args[i] = readVirtualMemoryString(argAddress, maxArgLength);
+
+	              if(args[i]==null){
+	                      return -1;
+	              }
+
+	      }
+	      
+	      UserProcess process = UserProcess.newUserProcess();
+	      
+	      if(!process.execute(fileName, args)) {
+	    	  		return -1;
+	      }
+	      
+
+	      childProcess child = new childProcess(process);
+	      process.myChildProcess = child;
+
+	      if(process.execute(fileName, args)){
+	          processPool.put(process.pid, child);
+	          return process.pid;
+	      }
+
+	      return -1;
+	}
+	
+	
+	private int handleJoin(int pid, int status){
+        if (pid <0 || status<0){
+                return -1;
+        }
+        
+        childProcess child;
+        
+        if(processPool.containsKey(pid)){
+        		child = processPool.get(pid);
+        }
+        else{
+             return -1;
+        }
+
+        child.child.thread.join();
+
+        processPool.remove(pid);
+
+        if(child.status != DEFAULT_STATUS){
+                byte exitStatus[] = new byte[4];
+                exitStatus = Lib.bytesFromInt(child.status);
+                int byteTransfered = writeVirtualMemory(status, exitStatus);
+
+                if(byteTransfered == 4){
+                     return 1;
+                }
+                else{
+                     return 0;
+                }
+
+        }
+        return 0;
+}
+	
+	
+	private int handleExit(int status){
+		
+        if(myChildProcess != null){
+        		myChildProcess.status = status;
+        }
+
+        for (int i=0; i < 16; i++) {
+            handleClose(i);
+        }
+
+        this.unloadSections();
+
+        if(this.pid == ROOT){
+            Kernel.kernel.terminate();
+        }
+        else{
+             KThread.finish();;
+             Lib.assertNotReached();
+        }
+        
+        return EXIT_STATUS;
+	}
+	
+	
+	
 	/**
 	 * Handle the halt() system call.
 	 */
@@ -605,6 +726,12 @@ public class UserProcess {
 			return handleClose(a0);
 		case syscallUnlink:
 			return handleUnlink(a0);
+		case syscallExec:
+			return handleExec(a0, a1, a2);
+		case syscallJoin:
+			return handleJoin(a0, a1);
+		case syscallExit:
+			return handleExit(a0);
 
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
@@ -642,6 +769,7 @@ public class UserProcess {
 			Lib.assertNotReached("Unexpected exception");
 		}
 	}
+	
 	public class Descriptor {
 		public OpenFile descriptor[] = new OpenFile[maxFileDescriptorNum];
 
@@ -703,11 +831,37 @@ public class UserProcess {
 			return descriptor[fileDescriptor];
 		}
 	}
+	
 	protected Descriptor descriptor;
 	protected static final int maxFileDescriptorNum = 16;
 	protected static Hashtable<String, Integer> files = new Hashtable<String, Integer>();
 	protected static HashSet<String> deleted = new HashSet<String>();
 	protected static final int maxFileNameLength = 256;
+	
+	
+	//task 3
+	protected static final int maxArgLength = 256;
+	private static final int ROOT = 100;
+	private static final int DEFAULT_STATUS = Integer.MIN_VALUE;
+	private static final int EXIT_STATUS = -1;
+	
+	private UThread thread;
+	private HashMap<Integer, childProcess> processPool;
+	private childProcess myChildProcess;
+	private int pid;
+	private int numOfProcess = 0;
+		
+	//Encapsulte child process with a default status
+	class childProcess{
+        UserProcess child;
+        int status;
+
+        childProcess(UserProcess process){
+                this.child = process;
+                this.status = DEFAULT_STATUS;
+        }
+	}
+	
 	/** The program being run by this process. */
 	protected Coff coff;
 

@@ -12,7 +12,7 @@ private static class PingTest implements Runnable {
     }
 
     private int which;
-    }
+
 public static void PriorityTest(){
     boolean status = Machine.interrupt().disable();//关中断，setPriority()函数中要求关中断
     final KThread a = new KThread(new PingTest(1)).setName("thread1");
