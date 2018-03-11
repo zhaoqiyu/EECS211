@@ -146,6 +146,6 @@ public class UserKernel extends ThreadedKernel {
 	public static UserProcess rootProcess = null;
 
 	/** A global linked list of free physical pages. */
-	public static LinkedList<Integer> freePages;
-	public static Lock listLock;
+	private static LinkedList<Integer> freePages;
+	private static Lock listLock;
 }
